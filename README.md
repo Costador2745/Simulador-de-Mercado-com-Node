@@ -1,4 +1,4 @@
-# Distributed Market Simulator in Go
+# Simulador de mercado em GO com Node
 
 Este projeto é uma simulação de mercado financeiro distribuído desenvolvida em Go, que demonstra conceitos de **concorrência** e **distribuição** de forma prática.
 
@@ -67,7 +67,7 @@ O código simula um mercado com múltiplos ativos (`AAPL`, `GOOG`, `AMZN`) e mú
   - Benchmarking e análise de desempenho
 
 ### Exemplo de output aleatorio
-
+```
 Node 2 rejeitou ordem inválida: {AgentID:1 Buy:false Asset:AAPL Quantity:5 Price:46}
 Node 1 rejeitou ordem inválida: {AgentID:0 Buy:false Asset:AMZN Quantity:3 Price:6}
 Node 1 rejeitou ordem inválida: {AgentID:2 Buy:false Asset:GOOG Quantity:3 Price:32}
