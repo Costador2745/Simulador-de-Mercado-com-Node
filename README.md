@@ -65,3 +65,51 @@ O código simula um mercado com múltiplos ativos (`AAPL`, `GOOG`, `AMZN`) e mú
   - Agentes inteligentes que usam histórico para decidir ordens
   - Mais ativos ou nós
   - Benchmarking e análise de desempenho
+
+### Exemplo de output aleatorio
+
+Node 2 rejeitou ordem inválida: {AgentID:1 Buy:false Asset:AAPL Quantity:5 Price:46}
+Node 1 rejeitou ordem inválida: {AgentID:0 Buy:false Asset:AMZN Quantity:3 Price:6}
+Node 1 rejeitou ordem inválida: {AgentID:2 Buy:false Asset:GOOG Quantity:3 Price:32}
+Node 1 processou ordem válida: {AgentID:0 Buy:true Asset:GOOG Quantity:1 Price:9} | Novo preço GOOG: 9.00
+Node 1 processou ordem válida: {AgentID:2 Buy:true Asset:AMZN Quantity:1 Price:13} | Novo preço AMZN: 13.00
+Node 2 processou ordem válida: {AgentID:1 Buy:true Asset:AMZN Quantity:1 Price:20} | Novo preço AMZN: 20.00
+Node 1 processou ordem válida: {AgentID:0 Buy:true Asset:AAPL Quantity:3 Price:9} | Novo preço AAPL: 9.00
+Node 1 rejeitou ordem inválida: {AgentID:2 Buy:false Asset:AMZN Quantity:2 Price:23}
+Node 2 processou ordem válida: {AgentID:1 Buy:true Asset:GOOG Quantity:1 Price:11} | Novo preço GOOG: 11.00
+Node 1 rejeitou ordem inválida: {AgentID:0 Buy:false Asset:GOOG Quantity:4 Price:41}
+Node 1 processou ordem válida: {AgentID:2 Buy:true Asset:AAPL Quantity:3 Price:11} | Novo preço AAPL: 11.00
+Node 2 rejeitou ordem inválida: {AgentID:1 Buy:false Asset:AMZN Quantity:1 Price:5}
+Node 1 rejeitou ordem inválida: {AgentID:2 Buy:false Asset:AMZN Quantity:1 Price:33}
+Node 2 processou ordem válida: {AgentID:1 Buy:true Asset:AMZN Quantity:2 Price:30} | Novo preço AMZN: 30.00
+Node 1 processou ordem válida: {AgentID:0 Buy:true Asset:AAPL Quantity:2 Price:47} | Novo preço AAPL: 47.00
+Node 2 recebeu atualização de preço: AAPL = 48.50
+Node 1 recebeu atualização de preço: AAPL = 47.75
+Node 2 recebeu atualização de preço: GOOG = 10.00
+Node 1 recebeu atualização de preço: GOOG = 9.50
+Node 2 recebeu atualização de preço: AMZN = 21.50
+Node 1 recebeu atualização de preço: AMZN = 17.25
+
+--- Histórico Node 1 ---
+Node 2 encerrando devido ao canal de ordens fechado.
+Node 1 encerrando devido ao canal de ordens fechado.
+{AgentID:0 Buy:true Asset:GOOG Quantity:1 Price:9}
+{AgentID:2 Buy:true Asset:AMZN Quantity:1 Price:13}
+{AgentID:0 Buy:true Asset:AAPL Quantity:3 Price:9}
+{AgentID:2 Buy:true Asset:AAPL Quantity:3 Price:11}
+{AgentID:0 Buy:true Asset:AAPL Quantity:2 Price:47}
+
+--- Histórico Node 2 ---
+{AgentID:1 Buy:true Asset:AMZN Quantity:1 Price:20}
+{AgentID:1 Buy:true Asset:GOOG Quantity:1 Price:11}
+{AgentID:1 Buy:true Asset:AMZN Quantity:2 Price:30}
+
+--- Saldo e Ativos finais dos agentes ---
+Agente 0 | Saldo: 492.00 | AAPL: 9.00 GOOG: 9.00 AMZN: 10.00 
+Agente 1 | Saldo: 521.00 | AAPL: 10.00 GOOG: 9.00 AMZN: 11.00 
+Agente 2 | Saldo: 530.00 | AAPL: 13.00 GOOG: 10.00 AMZN: 9.00 
+
+--- Preço final de cada ativo ---
+AAPL | Node 1: 47.75 | Node 2: 48.50
+GOOG | Node 1: 9.50 | Node 2: 10.00
+AMZN | Node 1: 17.25 | Node 2: 21.50
