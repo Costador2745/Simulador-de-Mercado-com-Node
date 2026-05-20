@@ -127,7 +127,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	for i := 0; i < 3; i++ {
-		agentSaldo[i] = 500.0 // cada agente começa com 500 de dinheiro
+		agentSaldo[i] = 550.0 // cada agente começa com 550 de dinheiro
 		agentAtivos[i] = 10.0 // cada agente começa com 10 ações
 	}
 
