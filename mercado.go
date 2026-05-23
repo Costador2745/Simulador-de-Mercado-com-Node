@@ -27,6 +27,7 @@ type Market struct {
 var agentSaldo = map[int]float64{}
 var agentAtivos = map[int]map[string]float64{}
 var assets = []string{"AAPL", "GOOG", "AMZN"}
+var accountMutex sync.Mutex
 
 func agent(id int, orders chan<- Order, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -57,21 +58,23 @@ func (m *Market) processOrders(orders <-chan Order, done chan bool) {
 				continue // ignora ordens inválidas
 			}
 			valid := false
+			accountMutex.Lock()
 			if order.Buy {
 				// Verifica saldo e se o preço é >= preço atual do ativo
 				if agentSaldo[order.AgentID] >= order.Price*order.Quantity && order.Price >= m.Price[order.Asset] {
 					agentSaldo[order.AgentID] -= order.Price * order.Quantity
 					agentAtivos[order.AgentID][order.Asset] += order.Quantity
 					valid = true
-				} else {
-					// Verifica ativos e se o preço é <= preço atual do ativo
-					if agentAtivos[order.AgentID][order.Asset] >= order.Quantity && order.Price <= m.Price[order.Asset] {
-						agentAtivos[order.AgentID][order.Asset] -= order.Quantity
-						agentSaldo[order.AgentID] += order.Price * order.Quantity
-						valid = true
-					}
+				}
+			} else {
+				// Verifica ativos e se o preço é <= preço atual do ativo
+				if agentAtivos[order.AgentID][order.Asset] >= order.Quantity && order.Price <= m.Price[order.Asset] {
+					agentAtivos[order.AgentID][order.Asset] -= order.Quantity
+					agentSaldo[order.AgentID] += order.Price * order.Quantity
+					valid = true
 				}
 			}
+			accountMutex.Unlock()
 			if valid {
 				m.Transactions = append(m.Transactions, order)
 				m.Price[order.Asset] = order.Price
@@ -88,15 +91,33 @@ func (m *Market) processOrders(orders <-chan Order, done chan bool) {
 }
 
 func (m *Market) syncPrice(address string, asset string) {
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		fmt.Println("Error connecting:", err)
+	for retries := 0; retries < 3; retries++ { // ADICIONADO: retry automático
+
+		conn, err := net.DialTimeout("tcp", address, 2*time.Second) // ADICIONADO
+		if err != nil {
+
+			fmt.Printf("[NODE %d] Erro ao conectar (%d/3): %v\n",
+				m.ID,
+				retries+1,
+				err,
+			)
+
+			time.Sleep(time.Millisecond * 500)
+			continue
+		}
+
+		defer conn.Close()
+
+		conn.SetDeadline(time.Now().Add(2 * time.Second))
+
+		m.mu.Lock()
+		fmt.Fprintf(conn, "%s %.2f\n", asset, m.Price[asset])
+		m.mu.Unlock()
+
+		fmt.Printf("[NODE %d] Preço sincronizado com %s\n", m.ID, address)
+
 		return
 	}
-	defer conn.Close()
-	m.mu.Lock()
-	fmt.Fprintf(conn, "%s %.2f\n", asset, m.Price[asset])
-	m.mu.Unlock()
 }
 
 func startServer(node *Market, port string) {
@@ -129,6 +150,57 @@ func startServer(node *Market, port string) {
 			}
 		}(conn)
 	}
+}
+
+func benchmarkOrders() {
+
+	start := time.Now()
+
+	var wg sync.WaitGroup
+
+	orders := make(chan Order, 100)
+
+	node := &Market{
+		ID: 99,
+		Price: map[string]float64{
+			"AAPL": 50,
+			"GOOG": 50,
+			"AMZN": 50,
+		},
+	}
+
+	done := make(chan bool, 1)
+
+	go node.processOrders(orders, done)
+
+	// simular carga grande
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			orders <- Order{
+				AgentID:  id,
+				Buy:      rand.Intn(2) == 0,
+				Asset:    assets[rand.Intn(len(assets))],
+				Quantity: float64(rand.Intn(5) + 1),
+				Price:    float64(rand.Intn(50) + 1),
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	close(orders)
+
+	done <- true
+
+	elapsed := time.Since(start)
+
+	fmt.Println("\n--- BENCHMARK ---")
+	fmt.Printf("Tempo total: %s\n", elapsed)
+	fmt.Printf("Ordens processadas: %d\n", 1000)
+	fmt.Printf("Ordens por segundo: %.2f\n", float64(1000)/elapsed.Seconds())
 }
 
 func main() {
@@ -203,4 +275,5 @@ func main() {
 	for _, asset := range assets {
 		fmt.Printf("%s | Node 1: %.2f | Node 2: %.2f\n", asset, node1.Price[asset], node2.Price[asset])
 	}
+	benchmarkOrders()
 }
