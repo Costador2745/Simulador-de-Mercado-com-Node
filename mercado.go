@@ -37,7 +37,7 @@ func agent(id int, orders chan<- Order, wg *sync.WaitGroup) {
 			Buy:      rand.Intn(2) == 0,
 			Asset:    assets[rand.Intn(len(assets))],
 			Quantity: float64(rand.Intn(5) + 1),
-			Price:    float64(rand.Intn(50) + 1),
+			Price:    float64(rand.Intn(21) + 40),
 		}
 		orders <- order
 		time.Sleep(time.Millisecond * 500)
@@ -49,7 +49,9 @@ func (m *Market) processOrders(orders <-chan Order, done chan bool) {
 		select {
 		case order, ok := <-orders:
 			if !ok {
-				fmt.Printf("Node %d encerrando devido ao canal de ordens fechado.\n", m.ID)
+				if m.ID != 99 {
+					fmt.Printf("Node %d encerrando devido ao canal de ordens fechado.\n", m.ID)
+				}
 				return
 			}
 			m.mu.Lock()
@@ -78,9 +80,13 @@ func (m *Market) processOrders(orders <-chan Order, done chan bool) {
 			if valid {
 				m.Transactions = append(m.Transactions, order)
 				m.Price[order.Asset] = order.Price
-				fmt.Printf("Node %d processou ordem válida: %+v | Novo preço %s: %.2f\n", m.ID, order, order.Asset, m.Price[order.Asset])
+				if m.ID != 99 {
+					fmt.Printf("Node %d processou ordem válida: %+v | Novo preço %s: %.2f\n", m.ID, order, order.Asset, m.Price[order.Asset])
+				}
 			} else {
-				fmt.Printf("Node %d rejeitou ordem inválida: %+v\n", m.ID, order)
+				if m.ID != 99 {
+					fmt.Printf("Node %d rejeitou ordem inválida: %+v\n", m.ID, order)
+				}
 			}
 			m.mu.Unlock()
 		case <-done:
@@ -153,7 +159,6 @@ func startServer(node *Market, port string) {
 }
 
 func benchmarkOrders() {
-
 	start := time.Now()
 
 	var wg sync.WaitGroup
@@ -169,13 +174,30 @@ func benchmarkOrders() {
 		},
 	}
 
-	done := make(chan bool, 1)
+	// Inicializar os agentes usados no benchmark
+	accountMutex.Lock()
+	for i := 0; i < 1000; i++ {
+		agentSaldo[i] = 1000.0
+		agentAtivos[i] = make(map[string]float64)
 
-	go node.processOrders(orders, done)
+		for _, asset := range assets {
+			agentAtivos[i][asset] = 10.0
+		}
+	}
+	accountMutex.Unlock()
 
-	// simular carga grande
+	done := make(chan bool)
+
+	// Processar ordens
+	go func() {
+		node.processOrders(orders, done)
+		done <- true
+	}()
+
+	// Criar 1000 ordens
 	for i := 0; i < 1000; i++ {
 		wg.Add(1)
+
 		go func(id int) {
 			defer wg.Done()
 
@@ -184,7 +206,7 @@ func benchmarkOrders() {
 				Buy:      rand.Intn(2) == 0,
 				Asset:    assets[rand.Intn(len(assets))],
 				Quantity: float64(rand.Intn(5) + 1),
-				Price:    float64(rand.Intn(50) + 1),
+				Price:    float64(rand.Intn(21) + 40),
 			}
 		}(i)
 	}
@@ -193,13 +215,15 @@ func benchmarkOrders() {
 
 	close(orders)
 
-	done <- true
+	<-done
 
 	elapsed := time.Since(start)
 
 	fmt.Println("\n--- BENCHMARK ---")
 	fmt.Printf("Tempo total: %s\n", elapsed)
-	fmt.Printf("Ordens processadas: %d\n", 1000)
+	fmt.Printf("Ordens recebidas: %d\n", 1000)
+	fmt.Printf("Ordens válidas: %d\n", len(node.Transactions))
+	fmt.Printf("Ordens rejeitadas: %d\n", 1000-len(node.Transactions))
 	fmt.Printf("Ordens por segundo: %.2f\n", float64(1000)/elapsed.Seconds())
 }
 
